@@ -9,20 +9,41 @@
  * @author Aurelijus Banelis
  */
 
+#define ESCAPE 27
+
 
 /*
  * Render
  */
 
+
 void renderScene(void) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // X
+        glColor3f(1,0,0);
 	glBegin(GL_TRIANGLES);
-		glVertex3f(-0.5,-0.5,0.0);
-		glVertex3f(0.5,0.0,0.0);
-		glVertex3f(0.0,0.5,0.0);
-	glEnd();
-
+                glVertex3f(1.0,0.0,0.0);
+		glVertex3f(0.0,-0.3,0.0);
+		glVertex3f(0.0,0.3,0.0);
+        glEnd();
+        
+        // y
+        glColor3f(0,1,0);
+	glBegin(GL_TRIANGLES);
+                glVertex3f(0.0,1.0,0.0);
+		glVertex3f(-0.3,0.0,0.0);
+		glVertex3f(0.3,0.0,0.0);
+        glEnd();
+        
+        // z
+        glColor3f(0,0,1);
+	glBegin(GL_TRIANGLES);
+                glVertex3f(0.0,0.0,1.0);
+		glVertex3f(-0.3,0.0,0.0);
+		glVertex3f(0.3,0.0,0.0);
+        glEnd();
+        
         glutSwapBuffers();
 }
 
@@ -50,9 +71,12 @@ void mouseDrag(int x, int y) {
 
 void keyPressed(unsigned char key, int x, int y) {
     printf("Key %c (%dx%d)\n", key, x, y);
-    if (key == 'q') {
-        exit(0); //glutLeaveMainLoop();
+    switch(key) {
+        case ESCAPE:
+            exit(0); //glutLeaveMainLoop();
+        break;
     }
+    glutPostRedisplay();
 }
 
 
@@ -64,12 +88,11 @@ void menu1(int value) {
     printf("Testas %d\n", value);
 }
 
-
 /*
  * Main
  */
 
-void initControlls() {
+void init() {
     // Menu
     glutCreateMenu(menu1);
     glutAddMenuEntry("Vienas", 1);
@@ -84,23 +107,29 @@ void initControlls() {
     
     // Keyboard
     glutKeyboardFunc(keyPressed);
+    
+    // Camera
+    gluLookAt ( 1, 1, 0,    //   y|/      y| /  /
+                1, 1, 1,    // ---/---x    |/  V
+                0,-1, 0 );  //  z/|       z/-----x
+    
 }
 
 int main(int argc, char **argv) {
 
-	// init GLUT and create Window
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_SINGLE | GLUT_ALPHA);
-	glutInitWindowPosition(1000,500);
-	glutInitWindowSize(320,320);
-	glutCreateWindow("U1");
-        initControlls();
+    // init GLUT and create Window
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE);
+    glutInitWindowPosition(1000,500);
+    glutInitWindowSize(320,320);
+    glutCreateWindow("U1");
+    init();
 
-	// register callbacks
-	glutDisplayFunc(renderScene);
+    // register callbacks
+    glutDisplayFunc(renderScene);
 
-	// enter GLUT event processing cycle
-	glutMainLoop();
-	
-	return 1;
+    // enter GLUT event processing cycle
+    glutMainLoop();
+
+    return 1;
 }
