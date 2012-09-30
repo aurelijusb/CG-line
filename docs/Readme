@@ -1,0 +1,16 @@
+Compile and run:
+	gcc src/main.c -lGL -lGLU -lglut -o U1Aurelijus
+	./U1Aurelijus
+
+Include paths:
+	/usr/include
+
+Libraries:
+	libGL libGLU libglut
+
+Ubuntu packeges:
+	sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
+
+Author:
+	Aurelijus Banelis
+	2012

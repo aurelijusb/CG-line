@@ -9,10 +9,15 @@
 #include <GL/glut.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
+#include <string.h>
 
 #define KEY_ESCAPE 27
 #define BUTTON_LEFT 0
 #define BUTTON_STATE_DOWN 0
+#define COMMAND_QUIT 0
+#define COMMAND_CLEAR 1
+#define COMMAND_BENCHMARK 2
 #define CAMERA_WIDTH 2
 #define CAMERA_HEIGHT 2
 #define MATRIX_WIDTH 32
@@ -33,7 +38,8 @@ int matrixX1, matrixX2, matrixY1, matrixY2 = 0; // Approximated line coordinates
 typedef enum { empty, filled } cell;
 cell matrixFloat[MATRIX_WIDTH][MATRIX_HEIGHT];  // Float approximation
 cell matrixInteger[MATRIX_WIDTH][MATRIX_HEIGHT];// Integer approximation
-
+char statusText[256];
+int statusTextLen = 0;
 
 /*
  * Window and OpenGL coordinates realtion
@@ -153,8 +159,8 @@ void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT],
     }
 }
 
-void updateMatrixInteger(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT],
-                         int matrixX1, int matrixY1, int matrixX2, int matrixY2) {
+void updateMatrixInteger(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT], int matrixX1,
+                         int matrixY1, int matrixX2, int matrixY2) {
     // Clear matrix
     clearMatrix(matrix);
     
@@ -321,6 +327,7 @@ void onMouseClick(int button, int buttonState, int x, int y) {
             break;
         }
     }
+    statusTextLen = 0;
     glutPostRedisplay();
 }
 
@@ -337,6 +344,75 @@ void onMouseMove(int x, int y) {
     // Updating precise line
     to3dCoordinates(x, y, &pointerX, &pointerY);    
     glutPostRedisplay();
+}
+
+
+/*
+ * Benchmarking
+ */
+
+void benchmarkAlgorythms() {
+    const int repeat = 2;
+    int repeated, x1, x2, y1, y2;
+    clock_t start = clock();
+    for (repeated = 0; repeated < repeat; repeated++) {
+        for (x1 = 0; x1 < MATRIX_WIDTH; x1++) {
+            for (x2 = 0; x2 < MATRIX_WIDTH; x2++) {
+                for (y1 = 0; y1 < MATRIX_HEIGHT; y1++) {
+                    for (y2 = 0; y2 < MATRIX_HEIGHT; y2++) {
+                        updateMatrixFloat(matrixFloat, x1, y1, x2, y2);
+                    }
+                }
+            }
+
+        }
+    }
+    clock_t finish1 = clock();
+    
+    for (repeated = 0; repeated < repeat; repeated++) {
+        for (x1 = 0; x1 < MATRIX_WIDTH; x1++) {
+            for (x2 = 0; x2 < MATRIX_WIDTH; x2++) {
+                for (y1 = 0; y1 < MATRIX_HEIGHT; y1++) {
+                    for (y2 = 0; y2 < MATRIX_HEIGHT; y2++) {
+                        updateMatrixInteger(matrixInteger, x1, y1, x2, y2);
+                    }
+                }
+            }
+
+        }
+    }
+    clock_t finish2 = clock();
+    
+    double time1 = (finish1-start) / (double) CLOCKS_PER_SEC;
+    double time2 = (finish2-finish1) / (double) CLOCKS_PER_SEC;
+    
+    statusTextLen = sprintf(statusText,
+                            "Slankaus: %f Sveiko: %f s. (skirtumas: %f)",
+                            time1, time2, time1 - time2);
+    printf("%s\n", statusText);
+    glutPostRedisplay();
+}
+
+void renderString(float x, float y, char *string, int len) {
+    glRasterPos2f(x, y);
+    int i;
+    for (i = 0; i < len; i++) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, string[i]);
+    }
+}
+
+void onMenu(int command) {
+    if (command == COMMAND_CLEAR) {
+        state = clear;
+        clearMatrix(matrixFloat);
+        clearMatrix(matrixInteger);
+        statusTextLen = 0;
+        glutPostRedisplay();
+    } else if (command == COMMAND_BENCHMARK) {
+        benchmarkAlgorythms();
+    } else if (command == COMMAND_QUIT) {
+        exit(0); // glutLeaveMainLoop();
+    }
 }
 
 /*
@@ -360,6 +436,12 @@ void renderScene(void) {
         glColor4f(1,1,0, 0.3);
         renderPointer();
     
+        // Status text
+        if (statusTextLen > 0) {
+            glColor3f(1,1,1);
+            renderString(0, 0.1, statusText, statusTextLen);
+        }
+        
     glutSwapBuffers();
 }
 
@@ -374,6 +456,13 @@ void init() {
     clearMatrix(matrixInteger);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    // Menu
+    glutCreateMenu(onMenu);
+    glutAddMenuEntry("Atstatyti", COMMAND_CLEAR);
+    glutAddMenuEntry("Palyginti algoritmus", COMMAND_BENCHMARK);
+    glutAddMenuEntry("Baigti", COMMAND_QUIT);
+    glutAttachMenu(GLUT_RIGHT_BUTTON);
     
     // Camera
     gluLookAt ( 1, 1, 0,    //   y|/      y| /  /
