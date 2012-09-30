@@ -1,8 +1,3 @@
-#include <GL/gl.h>
-#include <GL/glut.h>
-#include <stdio.h>
-#include <math.h>
-
 /**
  * Kompiuterinės grafikos 1 užduotis. 
  * Tiesės brėžimo algoritmas (Bresenham’s line algorithm).
@@ -10,35 +5,38 @@
  * @author Aurelijus Banelis
  */
 
-#define ESCAPE 27
+#include <GL/gl.h>
+#include <GL/glut.h>
+#include <stdio.h>
+#include <math.h>
+
+#define KEY_ESCAPE 27
 #define BUTTON_LEFT 0
 #define BUTTON_STATE_DOWN 0
 #define CAMERA_WIDTH 2
 #define CAMERA_HEIGHT 2
-
 #define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 32
-
 
 /*
  * Global variables
  */
 
-float pointerX = 0;
-float pointerY = 0;
-int windowWidth = 500;
-int windowHeight = 500;
+// Variables for window and OpenGl position releaton
+float pointerX, pointerY = 0;                   // Mouse position in GL
+int windowWidth, windowHeight = 500;            // Window size
 
-enum {clear, first, last} state = clear;
-float lx1, lx2, ly1, ly2 = 0;       // Line coordinates in 2D space
-int matrixX1, matrixX2, matrixY1, matrixY2 = 0;         // Line coordinates in matrix
+// Variables for line approximation
+enum {clear, first, last} state = clear;        // GUI state
+float lineX1, lineX2, lineY1, lineY2 = 0;       // Precise line coordinates
+int matrixX1, matrixX2, matrixY1, matrixY2 = 0; // Approximated line coordinates
 typedef enum { empty, filled } cell;
-cell matrixFloat[MATRIX_WIDTH][MATRIX_HEIGHT];
-cell matrixInteger[MATRIX_WIDTH][MATRIX_HEIGHT];
+cell matrixFloat[MATRIX_WIDTH][MATRIX_HEIGHT];  // Float approximation
+cell matrixInteger[MATRIX_WIDTH][MATRIX_HEIGHT];// Integer approximation
 
 
 /*
- * Transformations
+ * Window and OpenGL coordinates realtion
  */
 
 void saveWindowSize(int width, int height) {
@@ -58,6 +56,7 @@ void toMatrixCoordinates(int windowX, int windowY, int* x, int* y) {
     *y = (int) (windowY / (float) windowHeight * MATRIX_HEIGHT);
 }
 
+
 /*
  * Approximation
  */
@@ -71,23 +70,8 @@ void clearMatrix(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
     }
 }
 
-double max(int value1, int value2) {
-    if (value1 > value2) {
-        return value1;
-    } else {
-        return value2;
-    }
-}
-
-double min(int value1, int value2) {
-    if (value1 < value2) {
-        return value1;
-    } else {
-        return value2;
-    }
-}
-
-void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
+void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT],
+                       int matrixX1, int matrixY1, int matrixX2, int matrixY2) {
     // Clear matrix
     clearMatrix(matrix);
 
@@ -96,7 +80,7 @@ void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
     //          4      1   
     //            3  2   
 
-    // Changing octets
+    // Mirror octets
     int x1, x2, y1, y2;
     if (matrixY1 < matrixY2) {
         x1 = matrixX1;
@@ -110,12 +94,11 @@ void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
         y2 = matrixY1;
     }
 
-    // Line by octet
+    // Line approximation by octet
     int deltaX = x2 - x1;
     int deltaY = y2 - y1;
     double error = 0;
     if (deltaX >= 0 && deltaY >= 0 && deltaX >= deltaY) {
-        printf("1\n");
         // 1st octet
         double deltaErr = deltaY / (double) deltaX;
         int y = y1;
@@ -129,11 +112,10 @@ void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
             }
         }
     } else if (deltaX > 0 && deltaY >= 0 && deltaX < deltaY) {
-        printf("2\n");
         // 2nd octet
         double deltaErr = deltaX / (double) deltaY;
         int y;
-        int x = min(x1, x2);
+        int x = x1;
         for (y = y1; y <= y2; y++) {
             matrix[x][y] = filled;
             error = error + deltaErr;
@@ -143,7 +125,6 @@ void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
             }
         }
     } else if (deltaX <= 0 && deltaY > 0 && -deltaX <= deltaY) {
-        printf("3\n");
         // 3rd octet
         double deltaErr = -deltaX / (double) deltaY;
         int y;
@@ -157,7 +138,6 @@ void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
             }
         }
     } else if (deltaX <= 0 && deltaY >= 0 && -deltaX > deltaY) {
-        printf("4\n");
         // 4th octet
         double deltaErr = -deltaY / (double) deltaX;
         int y = y1;
@@ -173,11 +153,17 @@ void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
     }
 }
 
-void updateMatrixInteger(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
+void updateMatrixInteger(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT],
+                         int matrixX1, int matrixY1, int matrixX2, int matrixY2) {
     // Clear matrix
     clearMatrix(matrix);
     
-    // Changing octets
+    //Octets:     6  7
+    //          5   .__8      
+    //          4      1   
+    //            3  2   
+
+    // Mirror octets
     int x1, x2, y1, y2;
     if (matrixY1 < matrixY2) {
         x1 = matrixX1;
@@ -191,11 +177,7 @@ void updateMatrixInteger(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
         y2 = matrixY1;
     }
     
-    //Octets:     6  7
-    //          5   .__8      
-    //          4      1   
-    //            3  2   
-    
+    // Line approximation by octet
     int dx = x2 - x1;
     int dy = y2 - y1;
     if (dx >= 0 && dy >= 0 && dx >= dy) {
@@ -269,21 +251,6 @@ void updateMatrixInteger(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
     }
 }
 
-
-/*
- * Render
- */
-
-void renderPointer() {
-    glBegin(GL_QUADS);
-        const float size = 0.05;
-        glVertex2f(pointerX-size,pointerY-size);
-        glVertex2f(pointerX-size,pointerY+size);
-        glVertex2f(pointerX+size,pointerY+size);
-        glVertex2f(pointerX+size,pointerY-size);
-    glEnd();
-}
-
 void renderBox(float x, float y, float width, float height) {
     glBegin(GL_QUADS);
         glVertex2f(x, y);               //  0------3
@@ -306,157 +273,102 @@ void renderMatrix(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
     }
 }
 
+
+/*
+ * Pointer and real line
+ */
+
+void renderPointer() {
+    glBegin(GL_QUADS);
+        const float size = 0.05;
+        glVertex2f(pointerX,pointerY-size);
+        glVertex2f(pointerX-size,pointerY);
+        glVertex2f(pointerX,pointerY+size);
+        glVertex2f(pointerX+size,pointerY);
+    glEnd();
+}
+
 void renderRealLine() {
     if (state != clear) {
         if (state == first) {
-            lx2 = pointerX;
-            ly2 = pointerY;
+            lineX2 = pointerX;
+            lineY2 = pointerY;
         }
         glColor3f(1,1,0);
         glBegin(GL_LINES);
-            glVertex2f(lx1, ly1);
-            glVertex2f(lx2, ly2);
+            glVertex2f(lineX1, lineY1);
+            glVertex2f(lineX2, lineY2);
         glEnd();
     }
 }
 
-void renderDebug() {
-    // X
-    glColor3f(1,0,0);
-    glBegin(GL_TRIANGLES);
-        glVertex3f(1.0,0.0,0.0);
-        glVertex3f(0.0,-0.3,0.0);
-        glVertex3f(0.0,0.3,0.0);
-    glEnd();
-
-    // y
-    glColor3f(0,1,0);
-    glBegin(GL_TRIANGLES);
-        glVertex3f(0.0,1.0,0.0);
-        glVertex3f(-0.3,0.0,0.0);
-        glVertex3f(0.3,0.0,0.0);
-    glEnd();
-
-    // z
-    glColor3f(0,0,1);
-    glBegin(GL_TRIANGLES);
-        glVertex3f(0.0,0.0,1.0);
-        glVertex3f(-0.3,0.0,0.0);
-        glVertex3f(0.3,0.0,0.0);
-    glEnd();    
-}
-
-void renderScene(void) {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    renderDebug();
-    
-    // Matrix
-    glColor4f(1, 0, 1, 0.5);
-    renderMatrix(matrixFloat);
-    glColor4f(0, 1, 1, 0.5);
-    renderMatrix(matrixInteger);
-    
-    // Real line
-    glColor3f(0,1,1);
-    renderRealLine();
-
-    // Pointer
-    glColor3f(0,1,1);
-//    renderPointer();
-    
-    glutSwapBuffers();
-}
-
-
-/*
- * Mouse
- */
-
-void mouseClick(int button, int buttonState, int x, int y) {
+void onMouseClick(int button, int buttonState, int x, int y) {
     if (buttonState == BUTTON_STATE_DOWN) {
         switch (state) {
             case clear:
             case last:
-                to3dCoordinates(x, y, &lx1, &ly1);
+                // Starting line
+                to3dCoordinates(x, y, &lineX1, &lineY1);
                 toMatrixCoordinates(x, y, &matrixX1, &matrixY1);
                 clearMatrix(matrixFloat);
                 clearMatrix(matrixInteger);
                 state = first;
             break;
             case first:
-                //FIXME:
-                to3dCoordinates(x, y, &lx2, &ly2);
-                toMatrixCoordinates(x, y, &matrixX2, &matrixY2);
-//                updateMatrix(matrix);
+                // Finishing line
+                to3dCoordinates(x, y, &lineX2, &lineY2);
                 state = last;
             break;
         }
     }
     glutPostRedisplay();
-//    printf("Click %d %d (%dx%d) State = %d\n", button, state, x, y, state);
 }
 
-void mouseMove(int x, int y) {
-    to3dCoordinates(x, y, &pointerX, &pointerY);
-    
-    //FIXME: after
-    to3dCoordinates(x, y, &lx2, &ly2);
-    toMatrixCoordinates(x, y, &matrixX2, &matrixY2);
-    updateMatrixFloat(matrixFloat);
-    updateMatrixInteger(matrixInteger);
-    glutPostRedisplay();
-}
-
-void mouseDrag(int x, int y) {    
-//    printf("Drag (%dx%d)\n", x, y);
-}
-
-
-/*
- * Kayboard
- */
-
-void keyPressed(unsigned char key, int x, int y) {
-    printf("Key %c (%dx%d)\n", key, x, y);
-    switch(key) {
-        case ESCAPE:
-        exit(0); //glutLeaveMainLoop();
-        break;
+void onMouseMove(int x, int y) {
+    if (state == first) {
+        // Updating approximation
+        to3dCoordinates(x, y, &lineX2, &lineY2);
+        toMatrixCoordinates(x, y, &matrixX2, &matrixY2);
+        updateMatrixFloat(matrixFloat, matrixX1, matrixY1, matrixX2, matrixY2);
+        updateMatrixInteger(matrixInteger, matrixX1, matrixY1, matrixX2,
+                            matrixY2);
     }
+
+    // Updating precise line
+    to3dCoordinates(x, y, &pointerX, &pointerY);    
     glutPostRedisplay();
 }
 
-
 /*
- * Menu
+ * Main rendering and routines
  */
 
-void menu1(int value) {
-    printf("Testas %d\n", value);
+void renderScene(void) {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Matrix
+        glColor4f(0.3, 1, 0.3, 0.5);
+        renderMatrix(matrixFloat);
+        glColor4f(0, 0, 1, 0.5);
+        renderMatrix(matrixInteger);
+
+        // Real line
+        glColor3f(1,0,0);
+        renderRealLine();
+
+        // Pointer
+        glColor4f(1,1,0, 0.3);
+        renderPointer();
+    
+    glutSwapBuffers();
 }
 
-/*
- * Main
- */
-
-void init() {
-    // Menu
-    glutCreateMenu(menu1);
-    glutAddMenuEntry("Vienas", 1);
-    glutAddMenuEntry("Du", 2);
-    glutAddMenuEntry("Trys", 3);
-    glutAttachMenu(GLUT_RIGHT_BUTTON);
-    
+void init() {   
     // Mouse
-    glutMouseFunc(mouseClick);
-    glutPassiveMotionFunc(mouseMove);
-    glutMotionFunc(mouseDrag);
-    
-    // Keyboard
-    glutKeyboardFunc(keyPressed);
-    
-    // Window
+    glutMouseFunc(onMouseClick);
+    glutPassiveMotionFunc(onMouseMove);
+        
+    // Window and colors
     glutReshapeFunc(saveWindowSize);
     clearMatrix(matrixFloat);
     clearMatrix(matrixInteger);
@@ -470,8 +382,7 @@ void init() {
 }
 
 int main(int argc, char **argv) {
-
-    // init GLUT and create Window
+    // Init GLUT and create Window
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_ALPHA);
     glutInitWindowPosition(1000,500);
@@ -479,10 +390,10 @@ int main(int argc, char **argv) {
     glutCreateWindow("U1");
     init();
 
-    // register callbacks
+    // Register callbacks
     glutDisplayFunc(renderScene);
 
-    // enter GLUT event processing cycle
+    // Enter GLUT event processing cycle
     glutMainLoop();
 
     return 1;
