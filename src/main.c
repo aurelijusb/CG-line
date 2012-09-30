@@ -10,6 +10,8 @@
  */
 
 #define ESCAPE 27
+#define BUTTON_LEFT 0
+#define BUTTON_STATE_DOWN 0
 #define CAMERA_WIDTH 2
 #define CAMERA_HEIGHT 2
 
@@ -21,6 +23,9 @@ float pointerX = 0;
 float pointerY = 0;
 int windowWidth = 500;
 int windowHeight = 500;
+
+enum {clear, first, last} state = clear;
+float x1, x2, y1, y2 = 0;
 
 /*
  * Transformations
@@ -43,48 +48,57 @@ void to3dCoordinates(int windowX, int windowY, float* x, float* y) {
  */
 
 void renderScene(void) {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//        // Camera as window
-//        glLoadIdentity();               
-//        glRotatef(180, 1, 0, 0); 
-//        glTranslatef(-1, -1, 0);
-        
-        // X
-        glColor3f(1,0,0);
-	glBegin(GL_TRIANGLES);
-            glVertex3f(1.0,0.0,0.0);
-            glVertex3f(0.0,-0.3,0.0);
-            glVertex3f(0.0,0.3,0.0);
-	glEnd();
-        
-        // y
-        glColor3f(0,1,0);
-	glBegin(GL_TRIANGLES);
-            glVertex3f(0.0,1.0,0.0);
-            glVertex3f(-0.3,0.0,0.0);
-            glVertex3f(0.3,0.0,0.0);
-        glEnd();
-        
-        // z
-        glColor3f(0,0,1);
-	glBegin(GL_TRIANGLES);
-            glVertex3f(0.0,0.0,1.0);
-            glVertex3f(-0.3,0.0,0.0);
-            glVertex3f(0.3,0.0,0.0);
-        glEnd();
-        
-        // Pointer
+    // X
+    glColor3f(1,0,0);
+    glBegin(GL_TRIANGLES);
+        glVertex3f(1.0,0.0,0.0);
+        glVertex3f(0.0,-0.3,0.0);
+        glVertex3f(0.0,0.3,0.0);
+    glEnd();
+
+    // y
+    glColor3f(0,1,0);
+    glBegin(GL_TRIANGLES);
+        glVertex3f(0.0,1.0,0.0);
+        glVertex3f(-0.3,0.0,0.0);
+        glVertex3f(0.3,0.0,0.0);
+    glEnd();
+
+    // z
+    glColor3f(0,0,1);
+    glBegin(GL_TRIANGLES);
+        glVertex3f(0.0,0.0,1.0);
+        glVertex3f(-0.3,0.0,0.0);
+        glVertex3f(0.3,0.0,0.0);
+    glEnd();
+
+    // Pointer
+    glColor3f(0,1,1);
+    glBegin(GL_QUADS);
+        const float size = 0.05;
+        glVertex2f(pointerX-size,pointerY-size);
+        glVertex2f(pointerX-size,pointerY+size);
+        glVertex2f(pointerX+size,pointerY+size);
+        glVertex2f(pointerX+size,pointerY-size);
+    glEnd();
+
+    // Real line
+    if (state != clear) {
         glColor3f(0,1,1);
-        glBegin(GL_QUADS);
-            float size = 0.05;
-            glVertex2f(pointerX-size,pointerY-size);
-            glVertex2f(pointerX-size,pointerY+size);
-            glVertex2f(pointerX+size,pointerY+size);
-            glVertex2f(pointerX+size,pointerY-size);
+        if (state == first) {
+            x2 = pointerX;
+            y2 = pointerY;
+        }
+        glColor3f(1,1,0);
+        glBegin(GL_LINES);
+            glVertex2f(x1, y1);
+            glVertex2f(x2, y2);
         glEnd();
-
-        glutSwapBuffers();
+    }
+    
+    glutSwapBuffers();
 }
 
 
@@ -92,8 +106,22 @@ void renderScene(void) {
  * Mouse
  */
 
-void mouseClick(int button, int state, int x, int y) {
-    printf("Click %d %d (%dx%d)\n", button, state, x, y);
+void mouseClick(int button, int buttonState, int x, int y) {
+    if (buttonState == BUTTON_STATE_DOWN) {
+        switch (state) {
+            case clear:
+            case last:
+                to3dCoordinates(x, y, &x1, &y1);
+                state = first;
+            break;
+            case first:
+                to3dCoordinates(x, y, &x2, &y2);
+                state = last;
+            break;
+        }
+    }
+    glutPostRedisplay();
+    printf("Click %d %d (%dx%d) State = %d\n", button, state, x, y, state);
 }
 
 void mouseMove(int x, int y) {
@@ -102,7 +130,7 @@ void mouseMove(int x, int y) {
     printf("Move (%dx%d)=(%f %f)\n", x, y, pointerX, pointerY);
 }
 
-void mouseDrag(int x, int y) {
+void mouseDrag(int x, int y) {    
     printf("Drag (%dx%d)\n", x, y);
 }
 
