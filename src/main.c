@@ -32,7 +32,9 @@ int windowHeight = 500;
 enum {clear, first, last} state = clear;
 float lx1, lx2, ly1, ly2 = 0;       // Line coordinates in 2D space
 int matrixX1, matrixX2, matrixY1, matrixY2 = 0;         // Line coordinates in matrix
-enum { empty, filled } matrix[MATRIX_WIDTH][MATRIX_HEIGHT];
+typedef enum { empty, filled } cell;
+cell matrixFloat[MATRIX_WIDTH][MATRIX_HEIGHT];
+cell matrixInteger[MATRIX_WIDTH][MATRIX_HEIGHT];
 
 
 /*
@@ -60,7 +62,7 @@ void toMatrixCoordinates(int windowX, int windowY, int* x, int* y) {
  * Approximation
  */
 
-void clearMatrix() {
+void clearMatrix(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
     int x, y;
     for (x = 0; x < MATRIX_WIDTH; x++) {
         for (y = 0; y < MATRIX_HEIGHT; y++) {
@@ -85,78 +87,37 @@ double min(int value1, int value2) {
     }
 }
 
-void updateMatrix() {
+void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
     // Clear matrix
-    clearMatrix();
-    
+    clearMatrix(matrix);
+
     //Octets:     6  7
     //          5   .__8      
     //          4      1   
     //            3  2   
 
-    int deltaX = matrixX2 - matrixX1;
-    int deltaY = matrixY2 - matrixY1;   
+    // Changing octets
+    int x1, x2, y1, y2;
+    if (matrixY1 < matrixY2) {
+        x1 = matrixX1;
+        x2 = matrixX2;
+        y1 = matrixY1;
+        y2 = matrixY2;
+    } else {
+        x1 = matrixX2;
+        x2 = matrixX1;
+        y1 = matrixY2;
+        y2 = matrixY1;
+    }
+
+    // Line by octet
+    int deltaX = x2 - x1;
+    int deltaY = y2 - y1;
     double error = 0;
     if (deltaX >= 0 && deltaY >= 0 && deltaX >= deltaY) {
+        printf("1\n");
         // 1st octet
         double deltaErr = deltaY / (double) deltaX;
-        int y = matrixY1;
-        int x;
-        for (x = matrixX1; x <= matrixX2; x++) {
-            matrix[x][y] = filled;
-            error = error + deltaErr;
-            if (error >= 0.5) {
-                y++;
-                error -= 1;
-            }
-        }
-    } else if (deltaX > 0 && deltaY >= 0 && deltaX < deltaY) {
-        // 2nd octet
-        double deltaErr = deltaX / (double) deltaY;
-        int y;
-        int x = matrixX1;
-        for (y = matrixY1; y <= matrixY2; y++) {
-            matrix[x][y] = filled;
-            error = error + deltaErr;
-            if (error >= 0.5) {
-                x++;
-                error -= 1;
-            }
-        }
-    } else if (deltaX <= 0 && deltaY > 0 && -deltaX <= deltaY) {
-        // 3rd octet
-        double deltaErr = -deltaX / (double) deltaY;
-        int y;
-        int x = matrixX1;
-        for (y = matrixY1; y <= matrixY2; y++) {
-            matrix[x][y] = filled;
-            error = error + deltaErr;
-            if (error >= 0.5) {
-                x--;
-                error -= 1;
-            }
-        }
-    } else if (deltaX < 0 && deltaY > 0 && -deltaX > deltaY) {
-        // 4th octet
-        double deltaErr = -deltaY / (double) deltaX;
-        int y = matrixY1;
-        int x;
-        for (x = matrixX1; x >= matrixX2; x--) {
-            matrix[x][y] = filled;
-            error = error + deltaErr;
-            if (error >= 0.5) {
-                y++;
-                error -= 1;
-            }
-        }
-    } else if (deltaX < 0 && deltaY <= 0 && -deltaX >= -deltaY) {
-        // 5th octet
-        int x1 = matrixX2;
-        int x2 = matrixX1;
-        int y1 = matrixY2;
-        int y2 = matrixY1;
-        // Like 1st octet
-        double deltaErr = (y2 - y1) / (double) (x2 - x1);
         int y = y1;
         int x;
         for (x = x1; x <= x2; x++) {
@@ -167,16 +128,12 @@ void updateMatrix() {
                 error -= 1;
             }
         }
-    } else if (deltaX <= 0 && deltaY < 0 && -deltaX < -deltaY) {
-        // 6th octet
-        int x1 = matrixX2;
-        int x2 = matrixX1;
-        int y1 = matrixY2;
-        int y2 = matrixY1;
-        // Like 2st octet
-        double deltaErr = (x2 - x1) / (double) (y2 - y1);
-        int x = x1;
+    } else if (deltaX > 0 && deltaY >= 0 && deltaX < deltaY) {
+        printf("2\n");
+        // 2nd octet
+        double deltaErr = deltaX / (double) deltaY;
         int y;
+        int x = min(x1, x2);
         for (y = y1; y <= y2; y++) {
             matrix[x][y] = filled;
             error = error + deltaErr;
@@ -185,16 +142,12 @@ void updateMatrix() {
                 error -= 1;
             }
         }
-    } else if (deltaX > 0 && deltaY < 0 && deltaX <= -deltaY) {
-        // 7th octet
-        int x1 = matrixX2;
-        int x2 = matrixX1;
-        int y1 = matrixY2;
-        int y2 = matrixY1;
-        // Like 3st octet
-        double deltaErr = -(x2 - x1) / (double) (y2 - y1);
-        int x = x1;
+    } else if (deltaX <= 0 && deltaY > 0 && -deltaX <= deltaY) {
+        printf("3\n");
+        // 3rd octet
+        double deltaErr = -deltaX / (double) deltaY;
         int y;
+        int x = x1;
         for (y = y1; y <= y2; y++) {
             matrix[x][y] = filled;
             error = error + deltaErr;
@@ -203,14 +156,10 @@ void updateMatrix() {
                 error -= 1;
             }
         }
-    } else if (deltaX > 0 && deltaY < 0 && deltaX > -deltaY) {
-        // 8th octet
-        int x1 = matrixX2;
-        int x2 = matrixX1;
-        int y1 = matrixY2;
-        int y2 = matrixY1;
-        // Like 4st octet
-        double deltaErr = -(y2 - y1) / (double) (x2 - x1);
+    } else if (deltaX <= 0 && deltaY >= 0 && -deltaX > deltaY) {
+        printf("4\n");
+        // 4th octet
+        double deltaErr = -deltaY / (double) deltaX;
         int y = y1;
         int x;
         for (x = x1; x >= x2; x--) {
@@ -219,6 +168,102 @@ void updateMatrix() {
             if (error >= 0.5) {
                 y++;
                 error -= 1;
+            }
+        }
+    }
+}
+
+void updateMatrixInteger(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
+    // Clear matrix
+    clearMatrix(matrix);
+    
+    // Changing octets
+    int x1, x2, y1, y2;
+    if (matrixY1 < matrixY2) {
+        x1 = matrixX1;
+        x2 = matrixX2;
+        y1 = matrixY1;
+        y2 = matrixY2;
+    } else {
+        x1 = matrixX2;
+        x2 = matrixX1;
+        y1 = matrixY2;
+        y2 = matrixY1;
+    }
+    
+    //Octets:     6  7
+    //          5   .__8      
+    //          4      1   
+    //            3  2   
+    
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+    if (dx >= 0 && dy >= 0 && dx >= dy) {
+        // 1st octet
+        int D = 2*dy - dx;
+        matrix[x1][y1] = filled;
+        int y = y1;
+
+        int x;
+        for (x = x1+1; x <= x2; x++) {
+            if (D > 0) {
+                y = y + 1;
+                matrix[x][y] = filled;
+                D = D + (2*dy - 2*dx);
+            } else {
+                matrix[x][y] = filled;
+                D = D + (2*dy);
+            }
+        }
+    } else if (dx > 0 && dy >= 0 && dx < dy) {
+        // 2nd octet
+        int D = 2*dx - dy;
+        matrix[x1][y1] = filled;
+        int x = x1;
+
+        int y;
+        for (y = y1+1; y <= y2; y++) {
+            if (D > 0) {
+                x = x + 1;
+                matrix[x][y] = filled;
+                D = D + (2*dx - 2*dy);
+            } else {
+                matrix[x][y] = filled;
+                D = D + (2*dx);
+            }
+        }
+    } else if (dx <= 0 && dy > 0 && -dx <= dy) {
+        // 3rd octet
+        int D = -2*dx - dy;
+        matrix[x1][y1] = filled;
+        int x = x1;
+
+        int y;
+        for (y = y1+1; y <= y2; y++) {
+            if (D > 0) {
+                x = x - 1;
+                matrix[x][y] = filled;
+                D = D - 2*dx - 2*dy;
+            } else {
+                matrix[x][y] = filled;
+                D = D - 2*dx;
+            }
+        }
+    } else if (dx <= 0 && dy >= 0 && -dx > dy) {
+        // 4th octet
+        int D = 2*dy + dx;
+        matrix[x2][y2] = filled;
+        int y = y2;
+
+        int x;
+        for (x = x2+1; x <= x1; x++) {
+            if (D > 0) {
+                y = y - 1;
+                matrix[x][y] = filled;
+                D = D + (2*dy + 2*dx);
+            } else {
+                matrix[x][y] = filled;
+                D = D + 2*dy;
             }
         }
     }
@@ -248,7 +293,7 @@ void renderBox(float x, float y, float width, float height) {
     glEnd();    
 }
 
-void renderMatrix() {
+void renderMatrix(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
     float stepWidth = CAMERA_WIDTH / (float) MATRIX_WIDTH;
     float stepHeight = CAMERA_HEIGHT / (float) MATRIX_HEIGHT;
     int x, y;
@@ -307,8 +352,10 @@ void renderScene(void) {
     renderDebug();
     
     // Matrix
-    glColor3f(0.5, 0, 0.5);
-    renderMatrix();
+    glColor4f(1, 0, 1, 0.5);
+    renderMatrix(matrixFloat);
+    glColor4f(0, 1, 1, 0.5);
+    renderMatrix(matrixInteger);
     
     // Real line
     glColor3f(0,1,1);
@@ -316,7 +363,7 @@ void renderScene(void) {
 
     // Pointer
     glColor3f(0,1,1);
-    renderPointer();
+//    renderPointer();
     
     glutSwapBuffers();
 }
@@ -333,13 +380,15 @@ void mouseClick(int button, int buttonState, int x, int y) {
             case last:
                 to3dCoordinates(x, y, &lx1, &ly1);
                 toMatrixCoordinates(x, y, &matrixX1, &matrixY1);
-                clearMatrix();
+                clearMatrix(matrixFloat);
+                clearMatrix(matrixInteger);
                 state = first;
             break;
             case first:
+                //FIXME:
                 to3dCoordinates(x, y, &lx2, &ly2);
                 toMatrixCoordinates(x, y, &matrixX2, &matrixY2);
-                updateMatrix();
+//                updateMatrix(matrix);
                 state = last;
             break;
         }
@@ -354,11 +403,9 @@ void mouseMove(int x, int y) {
     //FIXME: after
     to3dCoordinates(x, y, &lx2, &ly2);
     toMatrixCoordinates(x, y, &matrixX2, &matrixY2);
-    updateMatrix();
-
+    updateMatrixFloat(matrixFloat);
+    updateMatrixInteger(matrixInteger);
     glutPostRedisplay();
-    
-//    printf("Move (%dx%d)=(%f %f)\n", x, y, pointerX, pointerY);
 }
 
 void mouseDrag(int x, int y) {    
@@ -411,7 +458,10 @@ void init() {
     
     // Window
     glutReshapeFunc(saveWindowSize);
-    clearMatrix();
+    clearMatrix(matrixFloat);
+    clearMatrix(matrixInteger);
+    glEnable (GL_BLEND);
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     // Camera
     gluLookAt ( 1, 1, 0,    //   y|/      y| /  /
