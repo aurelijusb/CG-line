@@ -78,9 +78,6 @@ void clearMatrix(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT]) {
 
 void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT],
                        int matrixX1, int matrixY1, int matrixX2, int matrixY2) {
-    // Clear matrix
-    clearMatrix(matrix);
-
     //Octets:     6  7
     //          5   .__8      
     //          4      1   
@@ -161,9 +158,6 @@ void updateMatrixFloat(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT],
 
 void updateMatrixInteger(cell matrix[MATRIX_WIDTH][MATRIX_HEIGHT], int matrixX1,
                          int matrixY1, int matrixX2, int matrixY2) {
-    // Clear matrix
-    clearMatrix(matrix);
-    
     //Octets:     6  7
     //          5   .__8      
     //          4      1   
@@ -336,6 +330,8 @@ void onMouseMove(int x, int y) {
         // Updating approximation
         to3dCoordinates(x, y, &lineX2, &lineY2);
         toMatrixCoordinates(x, y, &matrixX2, &matrixY2);
+        clearMatrix(matrixInteger);
+        clearMatrix(matrixFloat);
         updateMatrixFloat(matrixFloat, matrixX1, matrixY1, matrixX2, matrixY2);
         updateMatrixInteger(matrixInteger, matrixX1, matrixY1, matrixX2,
                             matrixY2);
@@ -352,7 +348,7 @@ void onMouseMove(int x, int y) {
  */
 
 void benchmarkAlgorythms() {
-    const int repeat = 2;
+    const int repeat = 20;
     int repeated, x1, x2, y1, y2;
     clock_t start = clock();
     for (repeated = 0; repeated < repeat; repeated++) {
