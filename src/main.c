@@ -348,33 +348,30 @@ void onMouseMove(int x, int y) {
  */
 
 void benchmarkAlgorythms() {
-    const int repeat = 20;
-    int repeated, x1, x2, y1, y2;
-    clock_t start = clock();
-    for (repeated = 0; repeated < repeat; repeated++) {
-        for (x1 = 0; x1 < MATRIX_WIDTH; x1++) {
-            for (x2 = 0; x2 < MATRIX_WIDTH; x2++) {
-                for (y1 = 0; y1 < MATRIX_HEIGHT; y1++) {
-                    for (y2 = 0; y2 < MATRIX_HEIGHT; y2++) {
-                        updateMatrixFloat(matrixFloat, x1, y1, x2, y2);
-                    }
-                }
-            }
-
+    const int repeat = 2000;
+    long n = 10000;
+    short rands[n][4];
+    int i, r = 0;
+    for (i = 0; i < n; i++) {
+        rands[i][0] = rand() % MATRIX_WIDTH;
+        rands[i][1] = rand() % MATRIX_HEIGHT;
+        rands[i][2] = rand() % MATRIX_HEIGHT;
+        rands[i][3] = rand() % MATRIX_HEIGHT;
+    }
+    
+    clock_t start = clock();    
+    for (r = 0; r < repeat; r++) {
+        for (i = 0; i < n; i++) {
+            updateMatrixFloat(matrixFloat, rands[i][0], rands[i][1],
+                                           rands[i][2], rands[i][3]);
         }
     }
-    clock_t finish1 = clock();
-    
-    for (repeated = 0; repeated < repeat; repeated++) {
-        for (x1 = 0; x1 < MATRIX_WIDTH; x1++) {
-            for (x2 = 0; x2 < MATRIX_WIDTH; x2++) {
-                for (y1 = 0; y1 < MATRIX_HEIGHT; y1++) {
-                    for (y2 = 0; y2 < MATRIX_HEIGHT; y2++) {
-                        updateMatrixInteger(matrixInteger, x1, y1, x2, y2);
-                    }
-                }
-            }
 
+    clock_t finish1 = clock();    
+    for (r = 0; r < repeat; r++) {
+        for (i = 0; i < n; i++) {
+            updateMatrixInteger(matrixFloat, rands[i][0], rands[i][1],
+                                           rands[i][2], rands[i][3]);
         }
     }
     clock_t finish2 = clock();
@@ -384,7 +381,7 @@ void benchmarkAlgorythms() {
     
     statusTextLen = sprintf(statusText,
                             "Slankaus: %f Sveiko: %f s. (skirtumas: %f)",
-                            time1, time2, time1 - time2);
+                            time1, time2, time2 / time1);
     printf("%s\n", statusText);
     glutPostRedisplay();
 }
