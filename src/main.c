@@ -348,8 +348,8 @@ void onMouseMove(int x, int y) {
  */
 
 void benchmarkAlgorythms() {
-    const int repeat = 2000;
-    int n = 10000;
+    const int repeat = 20000000;
+    int n = 1;
     short rands[n][4];
     int i, r = 0;
     for (i = 0; i < n; i++) {
@@ -360,16 +360,16 @@ void benchmarkAlgorythms() {
     }
     
     clock_t start = clock();    
-    for (r = 0; r < repeat; r++) {
-        for (i = 0; i < n; i++) {
+    for (i = 0; i < n; i++) {
+        for (r = 0; r < repeat; r++) {
             updateMatrixFloat(matrixFloat, rands[i][0], rands[i][1],
                                            rands[i][2], rands[i][3]);
         }
     }
 
     clock_t finish1 = clock();    
-    for (r = 0; r < repeat; r++) {
-        for (i = 0; i < n; i++) {
+    for (i = 0; i < n; i++) {
+        for (r = 0; r < repeat; r++) {
             updateMatrixInteger(matrixFloat, rands[i][0], rands[i][1],
                                            rands[i][2], rands[i][3]);
         }
